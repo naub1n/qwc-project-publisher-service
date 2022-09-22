@@ -31,8 +31,6 @@ class ProjectPublisherService:
 
     def file_output_path(self, filename):
         projects_scan_path = self.config.get("qgis_projects_scan_base_dir")
-        if not projects_scan_path:
-            projects_scan_path = "D:/SIG/QWC"
         if projects_scan_path:
             project_filename = filename
             project_file_output = os.path.join(projects_scan_path, project_filename)
@@ -143,3 +141,26 @@ class ProjectPublisherService:
         else:
             return self.project_path(filename)
 
+    def list_projects(self, allowed_extensions):
+        """Get QGIS projects files in QWC2 scan directory
+        :param dict allowed_extensions: list of allowed extensions
+        """
+        projects_scan_path = self.config.get("qgis_projects_scan_base_dir")
+        projects_filenames = []
+
+        self.logger.debug("QWC2 scan dir path : %s" % projects_scan_path)
+        if projects_scan_path:
+            if os.path.exists(projects_scan_path):
+                for f in os.listdir(projects_scan_path):
+                    project_path = os.path.join(projects_scan_path, f)
+                    if os.path.isfile(project_path):
+                        if os.path.splitext(project_path)[1][1:] in allowed_extensions:
+                            projects_filenames.append(f)
+            else:
+                return self.error_result("qgis_projects_scan_base_dir is defined but not exists")
+        else:
+            return self.error_result("qgis_projects_scan_base_dir not defined")
+
+        self.logger.debug('Projects in %s : %s ' % (projects_scan_path, projects_filenames))
+
+        return projects_filenames

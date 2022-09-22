@@ -24,9 +24,10 @@ Example:
   "service": "publisher",
   "config": {
     "qgis_projects_scan_base_dir": "/data/scan", 
-    "publisher_groups_name": { 
-      "Publishers"
-    }
+    "publisher_groups_name": [ 
+      "Publishers",
+      "admins"
+    ]
   }
 }
 ```
@@ -61,6 +62,10 @@ Get a project (get .qgs project content (xml)) :
 Delete a project :
 
 `curl -v -X DELETE "http://127.0.0.1:5100/deleteproject?filename=myproject.qgs"`
+
+Get projects list :
+
+`curl -v -X GET "http://127.0.0.1:5100/listprojects?"`
 
 N.B. : If `AUTH_REQUIRED` = `True`, X-CSRF-TOKEN header and cookies are needed.</br>
 Add `-H "X-CSRF-TOKEN: xxxxxxxx" -b cookiefilepath` to cURL command.<br>
