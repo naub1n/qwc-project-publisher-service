@@ -67,7 +67,7 @@ Get projects list :
 
 `curl -v -X GET "http://127.0.0.1:5100/listprojects?"`
 
-N.B. : If `AUTH_REQUIRED` = `True`, X-CSRF-TOKEN header and cookies are needed.</br>
+N.B. : If `AUTH_REQUIRED` = `True`, X-CSRF-TOKEN header and cookies are required.</br>
 Add `-H "X-CSRF-TOKEN: xxxxxxxx" -b cookiefilepath` to cURL command.<br>
 Use cURL POST command to login in.<br>
 Look at `POST_PARAM_LOGIN` in https://github.com/qwc-services/qwc-db-auth
