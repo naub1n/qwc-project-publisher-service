@@ -119,3 +119,4 @@ dmypy.json
 # User-specific stuff
 .idea/**/workspace.xml
 .idea/**/tasks.xml
+.idea/workspace.xml

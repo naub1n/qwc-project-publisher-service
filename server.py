@@ -13,7 +13,7 @@ from project_publisher_service import ProjectPublisherService
 from access_control import AccessControl
 
 AUTH_REQUIRED = os.environ.get('AUTH_REQUIRED', '0').lower() not in [0, "0", "false"]
-ALLOWED_EXTENSIONS = {'qgs'}
+ALLOWED_EXTENSIONS = ['qgs']
 
 # Flask application
 app = Flask(__name__)
@@ -192,6 +192,20 @@ class GetProject(Resource):
             app.logger.debug(msg)
             api.abort(404, msg)
 
+@api.route('/listprojects')
+class ListProjects(Resource):
+    @api.doc('listprojects')
+    @optional_auth
+    def get(self):
+        publish_service = project_publisher_service_handler()
+        tenant = publish_service.tenant
+        username = get_username()
+
+        result = publish_service.list_projects(ALLOWED_EXTENSIONS)
+
+        app.logger.info('User %s list projects in tenant %s' % (username, tenant))
+        app.logger.debug(result)
+        return jsonify(result)
 
 """ readyness probe endpoint """
 
