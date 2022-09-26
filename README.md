@@ -51,13 +51,13 @@ Publish a project :
 
 -optional : You can add `filename` parameter to specify output file name in QWC2 scan base dir
 
-Get a project (download .qgs project) :
-
-`curl -v -X GET "http://127.0.0.1:5100/getproject?filename=myproject.qgs"`
-
 Get a project (get .qgs project content (xml)) :
 
 `curl -v -X GET "http://127.0.0.1:5100/getproject?filename=myproject.qgs"`
+
+Get a project (download .qgs project) :
+
+`curl -v -X GET "http://127.0.0.1:5100/getproject?filename=myproject.qgs&content_only=false"`
 
 Delete a project :
 
