@@ -5,6 +5,8 @@ API documentation:
 
     http://localhost:5100/api/
 
+This service can be used with [Project Publisher QGIS Plugin](https://github.com/naub1n/QGIS_Project_Publisher) to easily publish project.
+
 
 Configuration
 -------------
@@ -14,7 +16,7 @@ e.g. `$CONFIG_PATH/default/*.json`. The default tenant name is `default`.
 
 ### JSON config
 
-* [JSON schema](schemas/qwc-print-service.json)
+* [JSON schema](schemas/qwc-project-publisher-service.json)
 * File location: `$CONFIG_PATH/<tenant>/projectPublisherConfig.json`
 
 Example:
@@ -24,15 +26,12 @@ Example:
   "service": "publisher",
   "config": {
     "qgis_projects_scan_base_dir": "/data/scan", 
-    "publisher_groups_name": [ 
-      "Publishers",
-      "admins"
-    ]
+    "publisher_role_name": "publishers"
   }
 }
 ```
 
-`publisher_groups_name` is all user groups required to publish a project.
+`publisher_role_name` is role required to publish a project.
 
 ### Environment variables
 
@@ -67,7 +66,7 @@ Get projects list :
 
 `curl -v -X GET "http://127.0.0.1:5100/listprojects?"`
 
-N.B. : If `AUTH_REQUIRED` = `True`, X-CSRF-TOKEN header and cookies are needed.</br>
+N.B. : If `AUTH_REQUIRED` = `True`, X-CSRF-TOKEN header and cookies are required.</br>
 Add `-H "X-CSRF-TOKEN: xxxxxxxx" -b cookiefilepath` to cURL command.<br>
 Use cURL POST command to login in.<br>
 Look at `POST_PARAM_LOGIN` in https://github.com/qwc-services/qwc-db-auth
