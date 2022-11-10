@@ -6,7 +6,7 @@ from flask_restx import Api, Resource, reqparse
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import FileStorage
 
-from qwc_services_core.auth import auth_manager, optional_auth, get_identity
+from qwc_services_core.auth import auth_manager, optional_auth, get_identity, get_groups, get_username
 from qwc_services_core.api import CaseInsensitiveArgument
 from qwc_services_core.tenant_handler import TenantHandler
 from project_publisher_service import ProjectPublisherService
@@ -24,7 +24,7 @@ api = Api(app, version='1.0', title='Publisher API',
 app.config['ERROR_404_HELP'] = False
 
 # Setup the Flask-JWT-Extended extension
-jwt = auth_manager(app)
+jwt = auth_manager(app, api)
 # app.secret_key = app.config['JWT_SECRET_KEY']
 
 
@@ -42,20 +42,12 @@ def project_publisher_service_handler():
     return handler
 
 
-def get_username():
-    # Extract user infos from identity
-    identity = get_identity()
-    if isinstance(identity, dict):
-        username = identity.get('username')
-    else:
-        username = identity
-    return username
-
 def check_filename(api, params):
     if 'filename' in params and params['filename']:
         pass
     else:
         api.abort(404, "filename parameter is required")
+
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -80,10 +72,12 @@ delete_parser.add_argument('filename', required=True, type=str)
 def assert_user_is_logged():
     app.logger.debug("AUTH_REQUIRED : %s" % AUTH_REQUIRED)
     identity = get_identity()
-    username = get_username()
+    username = get_username(identity)
+    groups = get_groups(identity)
 
     if AUTH_REQUIRED:
         app.logger.debug("Access with identity %s" % username)
+        app.logger.debug("Identity groups : %s" % str(groups))
         if identity is None:
             msg = "Access denied, authentication required"
             app.logger.info(msg)
@@ -126,13 +120,15 @@ class PublishProject(Resource):
         else:
             filename = secure_filename(file.filename)
 
-        username = get_username()
+        identity = get_identity()
+        username = get_username(identity)
         result = publish_service.publish(filename, file)
 
         app.logger.debug('Publish result : "%s' % result)
         app.logger.info('User %s publish project %s in tenant %s' % (username, filename, tenant))
 
         return jsonify(result)
+
 
 @api.route('/deleteproject')
 class DeleteProject(Resource):
@@ -150,7 +146,8 @@ class DeleteProject(Resource):
         tenant = publish_service.tenant
         filename = params['filename']
 
-        username = get_username()
+        identity = get_identity()
+        username = get_username(identity)
 
         result = publish_service.delete(filename)
         app.logger.debug('Delete result : "%s' % result)
@@ -175,7 +172,8 @@ class GetProject(Resource):
         tenant = publish_service.tenant
         filename = params['filename']
         content_only = params.get('content_only', "true").lower() in ["true", "1"]
-        username = get_username()
+        identity = get_identity()
+        username = get_username(identity)
 
         result = publish_service.get_project(filename, content_only)
 
@@ -199,7 +197,8 @@ class ListProjects(Resource):
     def get(self):
         publish_service = project_publisher_service_handler()
         tenant = publish_service.tenant
-        username = get_username()
+        identity = get_identity()
+        username = get_username(identity)
 
         result = publish_service.list_projects(ALLOWED_EXTENSIONS)
 
