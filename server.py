@@ -3,7 +3,6 @@ import os
 
 from flask import Flask, Response, jsonify, request, send_file
 from flask_restx import Api, Resource, reqparse
-from werkzeug.utils import secure_filename
 from werkzeug.datastructures import FileStorage
 
 from qwc_services_core.auth import auth_manager, optional_auth, get_identity, get_groups, get_username
@@ -93,12 +92,12 @@ def assert_user_is_logged():
 @api.route('/publish')
 class PublishProject(Resource):
     @api.doc('publishproject')
-    @api.param('filename', 'Name used to save project in qgs-resources folder')
-    @api.param('file', 'QGIS Project with .qgs extension')
+    @api.param('filename', 'Relative project path in qgis_projects_scan_base_dir folder')
+    @api.param('file', 'QGIS Project data (with .qgs extension)')
     @api.expect(publish_parser)
     @optional_auth
     def post(self):
-
+        '''Publish a QGIS project, in QWC Scan path of current tenant'''
         # check if the post request has the file part
         if 'file' not in request.files:
             api.abort(404, "No file part")
@@ -116,9 +115,9 @@ class PublishProject(Resource):
         tenant = publish_service.tenant
 
         if 'filename' in params and params['filename']:
-            filename = secure_filename(params['filename'])
+            filename = params['filename']
         else:
-            filename = secure_filename(file.filename)
+            filename = file.filename
 
         identity = get_identity()
         username = get_username(identity)
@@ -133,10 +132,11 @@ class PublishProject(Resource):
 @api.route('/deleteproject')
 class DeleteProject(Resource):
     @api.doc('deleteproject')
-    @api.param('filename', 'Name used to save project in qgs-resources folder')
+    @api.param('filename', 'Relative project path in qgis_projects_scan_base_dir folder')
     @api.expect(delete_parser)
     @optional_auth
     def delete(self):
+        '''Delete specific QGIS project, in QWC Scan path of current tenant'''
         params = delete_parser.parse_args()
 
         #Check 'filename' parameter
@@ -150,7 +150,7 @@ class DeleteProject(Resource):
         username = get_username(identity)
 
         result = publish_service.delete(filename)
-        app.logger.debug('Delete result : "%s' % result)
+        app.logger.debug('Delete result : "%s"' % result)
         if 'success' in result:
             app.logger.info('User %s delete project %s in tenant %s' % (username, filename, tenant))
         return jsonify(result)
@@ -158,11 +158,11 @@ class DeleteProject(Resource):
 @api.route('/getproject')
 class GetProject(Resource):
     @api.doc('getproject')
-    @api.param('filename', 'Name used to save project in qgs-resources folder')
+    @api.param('filename', 'Relative project path in qgis_projects_scan_base_dir folder')
     @api.expect(get_parser)
     @optional_auth
     def get(self):
-
+        '''Get content of specific QGIS project, in QWC Scan path of current tenant'''
         params = get_parser.parse_args()
 
         # Check 'filename' parameter
@@ -195,6 +195,7 @@ class ListProjects(Resource):
     @api.doc('listprojects')
     @optional_auth
     def get(self):
+        '''List all QGIS projects, with their relative path, in QWC Scan path of current tenant'''
         publish_service = project_publisher_service_handler()
         tenant = publish_service.tenant
         identity = get_identity()
@@ -205,6 +206,24 @@ class ListProjects(Resource):
         app.logger.info('User %s list projects in tenant %s' % (username, tenant))
         app.logger.debug(result)
         return jsonify(result)
+
+@api.route('/clean')
+class ListProjects(Resource):
+    @api.doc('clean')
+    @optional_auth
+    def get(self):
+        '''Delete empty directories in QWC Scan path of current tenant'''
+        publish_service = project_publisher_service_handler()
+        tenant = publish_service.tenant
+        identity = get_identity()
+        username = get_username(identity)
+
+        result = publish_service.clean_empty_dirs()
+
+        app.logger.info('User %s clean empty directories in tenant %s' % (username, tenant))
+
+        return jsonify(result)
+
 
 """ readyness probe endpoint """
 

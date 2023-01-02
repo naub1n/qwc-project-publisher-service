@@ -2,6 +2,7 @@ import os
 import urllib
 import requests
 
+from pathlib import Path
 from qwc_services_core.runtime_config import RuntimeConfig
 
 
@@ -29,18 +30,19 @@ class ProjectPublisherService:
         result = {'success': message}
         return result
 
-    def file_output_path(self, filename):
+    def output_path(self, relpath):
         projects_scan_path = self.config.get("qgis_projects_scan_base_dir")
+        self.logger.debug("projects_scan_path : %s" % projects_scan_path)
+        self.logger.debug("relpath : %s" % relpath)
         if projects_scan_path:
-            project_filename = filename
-            project_file_output = os.path.join(projects_scan_path, project_filename)
-            return project_file_output
+            if relpath[0] == "/":
+                relpath = relpath[1:]
+            output_path = os.path.join(projects_scan_path, relpath)
+            self.logger.debug("output_path : %s" % output_path)
+            return output_path
         else:
             self.logger.warning("qgis_projects_scan_base_dir not defined")
             return ''
-
-    def project_path(self, filename):
-        return self.file_output_path(filename)
 
     def publish(self, filename, file):
         """Publish QGIS project
@@ -48,13 +50,14 @@ class ProjectPublisherService:
         :param object file: POST request file
         """
 
-        project_file_out = self.file_output_path(filename)
+        project_file_out = self.output_path(filename)
 
         self.logger.debug("Tenant : %s" % self.tenant)
         self.logger.info("Try to write data to '%s'" % project_file_out)
 
         if project_file_out:
             try:
+                os.makedirs(os.path.dirname(project_file_out), exist_ok=True)
                 file.seek(0)
                 file.save(project_file_out)
                 self.logger.info("Project '%s' successfully saved" % filename)
@@ -83,7 +86,7 @@ class ProjectPublisherService:
         """Delete QGIS project file from QWC2 scan dir
         :param str filename: .qgs project file name
         """
-        project_file = self.file_output_path(filename)
+        project_file = self.output_path(filename)
 
         if not os.path.exists(project_file):
             return self.error_result("Project file '%s' does not exist" % filename)
@@ -129,7 +132,7 @@ class ProjectPublisherService:
         :param str filename: .qgs project file name
         :param bool content_only: request download file or only qgis project file content
         """
-        project_path = self.project_path(filename)
+        project_path = self.output_path(filename)
         if content_only:
             if os.path.exists(project_path):
                 with open(project_path, 'rb') as project:
@@ -139,28 +142,59 @@ class ProjectPublisherService:
             else:
                 return
         else:
-            return self.project_path(filename)
+            return project_path
 
     def list_projects(self, allowed_extensions):
         """Get QGIS projects files in QWC2 scan directory
         :param dict allowed_extensions: list of allowed extensions
         """
-        projects_scan_path = self.config.get("qgis_projects_scan_base_dir")
+        qgis_projects_scan_base_dir = self.config.get("qgis_projects_scan_base_dir")
         projects_filenames = []
 
-        self.logger.debug("QWC2 scan dir path : %s" % projects_scan_path)
-        if projects_scan_path:
-            if os.path.exists(projects_scan_path):
-                for f in os.listdir(projects_scan_path):
-                    project_path = os.path.join(projects_scan_path, f)
-                    if os.path.isfile(project_path):
-                        if os.path.splitext(project_path)[1][1:] in allowed_extensions:
-                            projects_filenames.append(f)
+        self.logger.debug("QWC2 scan dir path : %s" % qgis_projects_scan_base_dir)
+        if qgis_projects_scan_base_dir:
+            if os.path.exists(qgis_projects_scan_base_dir):
+                for dirpath, dirs, files in os.walk(qgis_projects_scan_base_dir,
+                                                    followlinks=True):
+                    for filename in files:
+                        if Path(filename).suffix[1:] in allowed_extensions:
+                            relscanpath = os.path.relpath(dirpath,
+                                                          qgis_projects_scan_base_dir)
+                            if relscanpath == '.':
+                                relscanpath = ''
+                            relprojectpath = os.path.join(relscanpath, filename)
+                            projects_filenames.append(relprojectpath)
             else:
                 return self.error_result("qgis_projects_scan_base_dir is defined but not exists")
         else:
             return self.error_result("qgis_projects_scan_base_dir not defined")
 
-        self.logger.debug('Projects in %s : %s ' % (projects_scan_path, projects_filenames))
+        self.logger.debug('Projects in %s : %s ' % (qgis_projects_scan_base_dir, projects_filenames))
 
         return projects_filenames
+
+    def clean_empty_dirs(self):
+        qgis_projects_scan_base_dir = self.config.get("qgis_projects_scan_base_dir")
+        deleted_dirs = []
+        if qgis_projects_scan_base_dir:
+            for dirpath, dirs, files in os.walk(qgis_projects_scan_base_dir, topdown=False):
+                for dir in dirs:
+                    fulldirpath = os.path.join(dirpath, dir)
+                    reldirpath = os.path.relpath(fulldirpath, qgis_projects_scan_base_dir)
+                    if len(os.listdir(fulldirpath)) == 0:
+                        try:
+                            os.rmdir(fulldirpath)
+                            deleted_dirs.append(reldirpath)
+                        except Exception as e:
+                            if deleted_dirs:
+                                msg_deleted_dirs = " but some directories are deleted : %s" % str(deleted_dirs)
+                            else:
+                                msg_deleted_dirs = ""
+                            msg = "Unable to delete directory %s%s" % (fulldirpath, msg_deleted_dirs)
+                            self.logger.error(msg)
+                            self.logger.debug("Error : %s" % str(e))
+                            return self.error_result(msg)
+
+            return self.success_result("Directories deleted : %s" % str(deleted_dirs))
+        else:
+            return self.error_result("qgis_projects_scan_base_dir not defined")
