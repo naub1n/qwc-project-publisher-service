@@ -68,16 +68,21 @@ class ProjectPublisherService:
                 self.logger.debug('Error : "%s"' % str(e))
                 return self.error_result(msg)
 
-            try:
-                if self.update_config():
-                    return self.success_result("Project '%s' successfully published" % filename)
-                else:
-                    return self.error_result("Project saved but unable to generate service configurations")
-            except Exception as e:
-                msg = "Unable to generate service configurations"
-                self.logger.error(msg)
-                self.logger.debug('Error : "%s"' % str(e))
-                return self.error_result(msg)
+            update_config_enable = str(self.config.get('update_config_enable', True)).lower() != 'false'
+
+            if update_config_enable:
+                try:
+                    if self.update_config():
+                        return self.success_result("Project '%s' successfully published" % filename)
+                    else:
+                        return self.error_result("Project saved but unable to generate service configurations")
+                except Exception as e:
+                    msg = "Unable to generate service configurations"
+                    self.logger.error(msg)
+                    self.logger.debug('Error : "%s"' % str(e))
+                    return self.error_result(msg)
+            else:
+                return self.success_result("Project '%s' successfully saved but not published, update config is disabled" % filename)
 
         else:
             return self.error_result("Project cant not be published. Contact GIS Administrator")
@@ -113,6 +118,7 @@ class ProjectPublisherService:
     def update_config(self):
         """Send request to QWC Config Service to update configurations"""
         config_generator_url = self.config.get('config_generator_service_url', "http://qwc-config-service:9090")
+
         response = requests.post(
             urllib.parse.urljoin(
                 config_generator_url,

@@ -26,12 +26,16 @@ Example:
   "service": "publisher",
   "config": {
     "qgis_projects_scan_base_dir": "/data/scan", 
-    "publisher_role_name": "publishers"
+    "publisher_role_name": "publishers",
+    "config_generator_service_url": "http://qwc-config-service:9090",
+    "update_config_enable": true
   }
 }
 ```
 
 `publisher_role_name` is role required to publish a project.
+
+`update_config_enable` allow qwc_project_publisher_service to run config_generator_service after a user publish or delete project.
 
 ### Environment variables
 
